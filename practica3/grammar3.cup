@@ -1,0 +1,168 @@
+
+package Practica3;
+import java_cup.runtime.*;
+import Interfaz.IOInterfaz;
+
+parser code {:
+    
+    
+    public void report_error(String message, Object info) {
+   
+        StringBuilder m = new StringBuilder("Error");
+   
+         if (info instanceof java_cup.runtime.Symbol) {
+            
+            java_cup.runtime.Symbol s = ((java_cup.runtime.Symbol) info);
+   
+             if (s.left >= 0) {                
+                  m.append(" in line "+(s.left+1));   
+               	 
+               	  if (s.right >= 0)                    
+                 	 m.append(", column "+(s.right+1));
+            }
+        }
+   
+        m.append(" : "+message);
+   
+        System.err.println(m);
+    }
+   
+    
+    public void report_fatal_error(String message, Object info) {
+        report_error(message, info);
+        System.exit(1);
+    }
+:};
+
+
+/* ------------Declaration of Terminals and Non Terminals Section----------- */
+
+terminal           		ASSIGN, SEMI, DOTS, OPEN, CLOSE, PTR, INTEGER, REAL;
+terminal           		oprel, oparit;
+terminal Integer   		integer_num;
+terminal Float   		real_num;
+terminal String   		id;
+terminal String   		array, of, IF, then, WHILE, DO, mod;
+
+non terminal Object     P, D, T, S, C, E;
+non terminal Object     basic, compound;
+
+/* -------------Precedence and Associatively of Terminals Section----------- */
+      
+precedence left oprel, oparit, ASSIGN, SEMI, DOTS, PTR, mod;
+
+/* ----------------------------Grammar Section-------------------- */
+
+P 		::=		D SEMI S
+			;
+
+D 		::=		D SEMI D
+			|	id DOTS T
+			;
+
+T 		::=		basic
+			|	compound
+			;
+
+basic 	::=		INTEGER
+			|	REAL
+			;
+	
+compound ::=	array OPEN integer_num CLOSE of basic
+			|	PTR basic
+			;
+
+S 		::=		S SEMI S
+			|	id ASSIGN E
+			|	id OPEN integer_num CLOSE ASSIGN E
+			|	IF C then S
+			|	WHILE C DO S
+			;
+
+C		::=		E oprel E
+			;
+
+E		::=		integer_num
+			|	real_num
+			|	E mod E
+			|	E OPEN E CLOSE
+			|	E PTR
+			|	id
+			|	E oparit E
+			;
+
+
+/*
+   list ::=   list line
+                 | line;
+               
+   line ::= 	line2D
+   				| ID:id EQUALS op_a:a {: VarTable.addFloat(id,a); IOInterfaz.println(" -> " + a); :} SEMI;
+
+   line2D ::= 
+   				ID:id EQUALS op_a2D:a {: VarTable.addVector(id,a[0],a[1]); IOInterfaz.println(" -> <" + a[0] + ", " + a[1] + ">"); :} SEMI;
+                 
+  term      ::= 	
+  				LPAREN op_a:a RPAREN {: RESULT = a; :}
+                 | NUMBER:n {: RESULT = n; :}
+                 | ID:i {: RESULT = VarTable.getFloat(i); :}
+                 | PI:pi {:RESULT = (float) Math.PI;:}
+                 | MAG term2D:t {:RESULT = VarTable.magVector(t);:}
+                 ;
+
+  op_a2D	::= op_a2D:a PLUS op_b2D:b {:RESULT = VarTable.sumVector(a,b);:}
+  				| op_a2D:a MINUS op_b2D:b {:RESULT = VarTable.resVector(a,b);:}
+  				| op_b2D:t {:RESULT = t;:}
+  				;
+  
+  op_b2D	::= DOT LPAREN op_b2D:a COMA op_b2D:b RPAREN {:RESULT = VarTable.dotVector(a,b);:}
+  				| term:b TIMES op_b2D:a {:RESULT = VarTable.mulVector(a,b);:}
+  				| op_b2D:a TIMES term:b {:RESULT = VarTable.mulVector(a,b);:}
+  				| op_b2D:a DIVIDE term:b {:RESULT = VarTable.divVector(a,b);:}
+  				| op_c2D:t {:RESULT = t;:}
+  				;
+  
+  op_c2D	::= op_b2D:a EXP term:b {:RESULT = VarTable.expVector(a,b);:}
+  				| term2D:t {:RESULT = t;:}
+  				;
+
+  term2D      ::= 	
+  				LPAREN op_a2D:a RPAREN {: RESULT = a; :}
+                 | OPEN op_a:a COMA op_a:b CLOSE {: RESULT = new Float[]{a,b}; :}
+                 | OPEN ID:i CLOSE {: RESULT = VarTable.getVector(i); :}
+                 | NORM term2D:a {: RESULT = VarTable.normVector(a); :}
+                 ;
+                 
+  op_a      ::= 
+   				op_a:a PLUS op_b:b {: RESULT = new Float(a.floatValue() + b.floatValue()); :}
+                 | op_a:a MINUS op_b:b {: RESULT = new Float(a.floatValue() - b.floatValue()); :}
+                 | op_b:b {: RESULT = new Float(b.floatValue()); :} ;
+   
+  op_b    ::= 
+  				 op_b:b EXP op_c:c {: RESULT = (float) Math.pow(b.floatValue(), c.floatValue());:}
+                 | op_b:b TIMES op_c:c {: RESULT = new Float(b.floatValue() * c.floatValue()); :}
+                 | op_b:b DIVIDE op_c:c {: RESULT = new Float(b.floatValue() / c.floatValue()); :}
+                 | op_c:c {: RESULT = new Float(c.floatValue()); :}
+                 ;
+                 
+  op_c    ::= 
+  				LN term:t {: Float f1= new Float(t.floatValue());
+  									RESULT =  (float) Math.log(f1); :}
+  									|
+  				SIN term:t {: Float f1= new Float(t.floatValue());
+  									RESULT =  (float) Math.sin(f1); :}
+  									|
+  				COS term:t {: Float f1= new Float(t.floatValue());
+  									RESULT =  (float) Math.cos(f1); :}
+  									|
+  				TAN term:t {: Float f1= new Float(t.floatValue());
+  									RESULT =  (float) Math.tan(f1); :}
+  									|
+  				SQRT term:t {: Float f1= new Float(t.floatValue());
+  									RESULT =  (float) Math.sqrt(f1); :}
+  									|
+                term:t {: RESULT = new Float(t.floatValue()); :}
+                 ;
+                 
+*/
+                 

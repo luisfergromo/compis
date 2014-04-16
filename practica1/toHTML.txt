@@ -1,0 +1,39 @@
+Nombres:
+
+	Cristian_y_Boyain_y_Goitia_Luna   			valido
+	Juan_Lopez_y_de_la_Torre_y_de_los_Trigos		valido
+	Juan_y_Mo						valido
+	
+	Juan_L0pez						no valido
+	Juan_y							no valido
+	J_Perez							no valido  
+	JuaN_Perez						no valido
+	Juan_Jose_Perez_Lopez_Un_Dos_Tres_Cuatro_Cinco		no valido maximo 6 bloques
+Telefonos:
+
+	
+	12-34-67-34		valido telefono local
+	(33)-45-23-56-23	valido telefono local
+	(345)-33-34-12-34-45	valido telefono cel	
+	(044)-33-12-45-56-34	valido
+
+	33-243-45-213		no valido
+	s3-34-45-23		no valido
+	33-33-33-33-33-33-33    no valido
+	(345)33-34-12-34-45	no valido (aunque la parte de 33-34-12-34-45 si lo tomara como valido)
+
+correos:
+
+	a394_49@hotmail.com     valido
+	miriamdiaz@iteso.mx     Envien el resultado de su practica a este correo.
+	3a.aaa.a@hotmail.com	no valido
+	
+Los siguientes son URLs:
+
+  http://www.youtube.com/embed/ftjEcrrf7r0?list=AL94UKMTqg-9C2X47VYa0ZOwB4yTRUECzj	se detecta como video de www.youtube.com (este como url)
+
+El enlace www.google.com es la pagina oficial de busqueda, pero http://www.yahoo.com es otra pagina aunque
+
+   127.0.0.1/shared_folder/folder1.algo/folder2/archivo.html
+
+   

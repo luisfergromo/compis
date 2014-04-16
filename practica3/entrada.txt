@@ -1,0 +1,7 @@
+i: integer;
+r: real;
+a: array[5] of real;
+p: ^integer;
+
+variable:=5;
+if a[0] < a[1] then a[0]:=10
