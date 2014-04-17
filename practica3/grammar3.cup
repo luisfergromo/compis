@@ -39,13 +39,14 @@ parser code {:
 
 terminal           		ASSIGN, SEMI, DOTS, OPEN, CLOSE, PTR, INTEGER, REAL;
 terminal           		oprel, oparit;
-terminal Integer   		integer_num;
-terminal Float   		real_num;
+
+terminal String   		integer_num;
+terminal String   		real_num;
 terminal String   		id;
 terminal String   		array, of, IF, then, WHILE, DO, mod;
 
-non terminal Object     P, D, T, S, C, E;
-non terminal Object     basic, compound;
+non terminal String     P, D, T, S, C, E;
+non terminal String     basic, compound;
 
 /* -------------Precedence and Associatively of Terminals Section----------- */
       
@@ -53,116 +54,56 @@ precedence left oprel, oparit, ASSIGN, SEMI, DOTS, PTR, mod;
 
 /* ----------------------------Grammar Section-------------------- */
 
-P 		::=		D SEMI S
+P 		::=		D SEMI S:S1 {:if(!S1.contentEquals("Void")) System.out.println("SEMANTICS ARE INVALID "+S1); else System.out.println("\n\n============\nSEMANTICS ARE VALID");:}
 			;
 
 D 		::=		D SEMI D
-			|	id DOTS T
+			|	id:name DOTS T:type {: if(!symTable.insert_id ( name , type.toString() )) System.out.println("ERROR: identificador duplicado"); :}
 			;
 
-T 		::=		basic
-			|	compound
+T 		::=		basic:t 			{:RESULT=t;:}
+			|	compound:t 			{:RESULT=t;:}
 			;
 
-basic 	::=		INTEGER
-			|	REAL
+basic 	::=		INTEGER				{: RESULT="Integer"; :}
+			|	REAL				{: RESULT="Real"; :}
 			;
 	
-compound ::=	array OPEN integer_num CLOSE of basic
-			|	PTR basic
+compound ::=	array OPEN integer_num CLOSE of basic:type 		{: RESULT= "Array("+type+")"; 	:}
+			|	PTR basic:type									{: RESULT= "Pointer("+type+")";		:}
 			;
 
-S 		::=		S SEMI S
-			|	id ASSIGN E
-			|	id OPEN integer_num CLOSE ASSIGN E
-			|	IF C then S
-			|	WHILE C DO S
+S 		::=		S:S1 SEMI S:S2								{: if(S1.contentEquals(S2)) RESULT= "Void"; else RESULT="Error";:}
+			|	id:name OPEN integer_num CLOSE ASSIGN E:E1	{:  if(symTable.get_id(name,true)==null) RESULT= "Error";
+																else {
+																	String tmp = symTable.get_id(name,true).type;
+																	if(tmp.endsWith(E1+")")) RESULT= "Void";
+																	else if(tmp.contentEquals("Array(Real)") && E1.contentEquals("Integer")) RESULT= "Void";
+																	else RESULT="Error";
+																}
+															:}
+															
+			|	id:name ASSIGN E:E1							{: if(symTable.get_id(name,true)==null) RESULT= "Error";
+																else {
+																	String tmp = symTable.get_id(name,true).type;
+																	if(tmp.contentEquals(E1)) RESULT= "Void";
+																	else if(tmp.contentEquals("Real") && E1.contentEquals("Integer")) RESULT= "Void";
+																	else RESULT="Error";
+																}
+															:}
+															
+			|	IF C:C1 then S:S1							{: if (C1.contentEquals("Boolean") && !S1.contentEquals("Error")) RESULT= "Void"; else RESULT="Error"; :}
+			|	WHILE C:C1 DO S:S1							{: if (C1.contentEquals("Boolean") && !S1.contentEquals("Error")) RESULT= "Void"; else RESULT="Error"; :}
 			;
 
-C		::=		E oprel E
+C		::=		E:E1 oprel E:E2			{: if(E1.contentEquals(E2)) RESULT="Boolean"; else RESULT="Error"; :}
 			;
 
-E		::=		integer_num
-			|	real_num
-			|	E mod E
-			|	E OPEN E CLOSE
-			|	E PTR
-			|	id
+E		::=		integer_num				{: RESULT="Integer"; :}
+			|	real_num				{: RESULT="Real"; :}
+			|	E:E1 mod E:E2			{: if(E1.contentEquals("Integer") && E2.contentEquals("Integer")) RESULT="Integer"; else RESULT="Error"; :}
+			|	E:E1 OPEN E:E2 CLOSE	{: if(E2.contentEquals("Integer")) RESULT=E1; else RESULT="Error"; :}	
+			|	E:E1 PTR				{: if(E1.startsWith("Pointer")) RESULT=E1; else RESULT="Error"; :}
+			|	id:name					{: try{RESULT=symTable.get_id(name,true).type;}catch(Exception ex){RESULT="Error";}:}
 			|	E oparit E
 			;
-
-
-/*
-   list ::=   list line
-                 | line;
-               
-   line ::= 	line2D
-   				| ID:id EQUALS op_a:a {: VarTable.addFloat(id,a); IOInterfaz.println(" -> " + a); :} SEMI;
-
-   line2D ::= 
-   				ID:id EQUALS op_a2D:a {: VarTable.addVector(id,a[0],a[1]); IOInterfaz.println(" -> <" + a[0] + ", " + a[1] + ">"); :} SEMI;
-                 
-  term      ::= 	
-  				LPAREN op_a:a RPAREN {: RESULT = a; :}
-                 | NUMBER:n {: RESULT = n; :}
-                 | ID:i {: RESULT = VarTable.getFloat(i); :}
-                 | PI:pi {:RESULT = (float) Math.PI;:}
-                 | MAG term2D:t {:RESULT = VarTable.magVector(t);:}
-                 ;
-
-  op_a2D	::= op_a2D:a PLUS op_b2D:b {:RESULT = VarTable.sumVector(a,b);:}
-  				| op_a2D:a MINUS op_b2D:b {:RESULT = VarTable.resVector(a,b);:}
-  				| op_b2D:t {:RESULT = t;:}
-  				;
-  
-  op_b2D	::= DOT LPAREN op_b2D:a COMA op_b2D:b RPAREN {:RESULT = VarTable.dotVector(a,b);:}
-  				| term:b TIMES op_b2D:a {:RESULT = VarTable.mulVector(a,b);:}
-  				| op_b2D:a TIMES term:b {:RESULT = VarTable.mulVector(a,b);:}
-  				| op_b2D:a DIVIDE term:b {:RESULT = VarTable.divVector(a,b);:}
-  				| op_c2D:t {:RESULT = t;:}
-  				;
-  
-  op_c2D	::= op_b2D:a EXP term:b {:RESULT = VarTable.expVector(a,b);:}
-  				| term2D:t {:RESULT = t;:}
-  				;
-
-  term2D      ::= 	
-  				LPAREN op_a2D:a RPAREN {: RESULT = a; :}
-                 | OPEN op_a:a COMA op_a:b CLOSE {: RESULT = new Float[]{a,b}; :}
-                 | OPEN ID:i CLOSE {: RESULT = VarTable.getVector(i); :}
-                 | NORM term2D:a {: RESULT = VarTable.normVector(a); :}
-                 ;
-                 
-  op_a      ::= 
-   				op_a:a PLUS op_b:b {: RESULT = new Float(a.floatValue() + b.floatValue()); :}
-                 | op_a:a MINUS op_b:b {: RESULT = new Float(a.floatValue() - b.floatValue()); :}
-                 | op_b:b {: RESULT = new Float(b.floatValue()); :} ;
-   
-  op_b    ::= 
-  				 op_b:b EXP op_c:c {: RESULT = (float) Math.pow(b.floatValue(), c.floatValue());:}
-                 | op_b:b TIMES op_c:c {: RESULT = new Float(b.floatValue() * c.floatValue()); :}
-                 | op_b:b DIVIDE op_c:c {: RESULT = new Float(b.floatValue() / c.floatValue()); :}
-                 | op_c:c {: RESULT = new Float(c.floatValue()); :}
-                 ;
-                 
-  op_c    ::= 
-  				LN term:t {: Float f1= new Float(t.floatValue());
-  									RESULT =  (float) Math.log(f1); :}
-  									|
-  				SIN term:t {: Float f1= new Float(t.floatValue());
-  									RESULT =  (float) Math.sin(f1); :}
-  									|
-  				COS term:t {: Float f1= new Float(t.floatValue());
-  									RESULT =  (float) Math.cos(f1); :}
-  									|
-  				TAN term:t {: Float f1= new Float(t.floatValue());
-  									RESULT =  (float) Math.tan(f1); :}
-  									|
-  				SQRT term:t {: Float f1= new Float(t.floatValue());
-  									RESULT =  (float) Math.sqrt(f1); :}
-  									|
-                term:t {: RESULT = new Float(t.floatValue()); :}
-                 ;
-                 
-*/
-                 

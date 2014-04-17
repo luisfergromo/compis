@@ -17,5 +17,7 @@ public class Main {
 		      /* do cleanup here -- possibly rethrow e */
 		      e.printStackTrace();
 		    }
+		
+		System.out.println(symTable.report());
 	}
 }
