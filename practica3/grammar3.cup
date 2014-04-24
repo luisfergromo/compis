@@ -45,7 +45,7 @@ terminal String   		real_num;
 terminal String   		id;
 terminal String   		array, of, IF, then, WHILE, DO, mod;
 
-non terminal String     P, D, T, S, C, E;
+non terminal String     P, T, S, C, E;
 non terminal String     basic, compound;
 
 /* -------------Precedence and Associatively of Terminals Section----------- */
@@ -54,11 +54,15 @@ precedence left oprel, oparit, ASSIGN, SEMI, DOTS, PTR, mod;
 
 /* ----------------------------Grammar Section-------------------- */
 
-P 		::=		D SEMI S:S1 {:if(!S1.contentEquals("Void")) System.out.println("SEMANTICS ARE INVALID "+S1); else System.out.println("\n\n============\nSEMANTICS ARE VALID");:}
-			;
-
-D 		::=		D SEMI D
-			|	id:name DOTS T:type {: if(!symTable.insert_id ( name , type.toString() )) System.out.println("ERROR: identificador duplicado"); :}
+P 		::=		S:S1 				{:
+										if(!S1.contentEquals("Void") && symTable.is_balanced())
+											System.out.println("\n\n===== SEMANTICS ARE INVALID =====");
+										else 
+											System.out.println("\n\n===== SEMANTICS ARE VALID =====");
+											
+										if(!symTable.is_balanced())
+											System.out.println("\n\n===== BLOCKS ARE UNBALANCED =====");
+									:}
 			;
 
 T 		::=		basic:t 			{:RESULT=t;:}
@@ -74,18 +78,34 @@ compound ::=	array OPEN integer_num CLOSE of basic:type 		{: RESULT= "Array("+ty
 			;
 
 S 		::=		S:S1 SEMI S:S2								{: if(S1.contentEquals(S2)) RESULT= "Void"; else RESULT="Error";:}
-			|	id:name OPEN integer_num CLOSE ASSIGN E:E1	{:  if(symTable.get_id(name,true)==null) RESULT= "Error";
+
+			|	id:name DOTS T:type 						{: /*DECLARATIONS*/
+			
+																if(symTable.insert_id (name,type.toString()))
+																RESULT="Void";
+																else
+																{
+																	System.out.println("ERROR: identificador duplicado"); 
+																	RESULT="Error";
+																}
+															:}
+															
+															
+			|	id:name OPEN integer_num CLOSE ASSIGN E:E1	{:  
+																/*ASSIGNATIONS*/
+																
+																if(symTable.get_id(name,true,false)==null) RESULT= "Error";
 																else {
-																	String tmp = symTable.get_id(name,true).type;
+																	String tmp = symTable.get_id(name,true,true).type;
 																	if(tmp.endsWith(E1+")")) RESULT= "Void";
 																	else if(tmp.contentEquals("Array(Real)") && E1.contentEquals("Integer")) RESULT= "Void";
 																	else RESULT="Error";
 																}
 															:}
 															
-			|	id:name ASSIGN E:E1							{: if(symTable.get_id(name,true)==null) RESULT= "Error";
+			|	id:name ASSIGN E:E1							{: if(symTable.get_id(name,true,false)==null) RESULT= "Error";
 																else {
-																	String tmp = symTable.get_id(name,true).type;
+																	String tmp = symTable.get_id(name,true,true).type;
 																	if(tmp.contentEquals(E1)) RESULT= "Void";
 																	else if(tmp.contentEquals("Real") && E1.contentEquals("Integer")) RESULT= "Void";
 																	else RESULT="Error";
@@ -104,6 +124,6 @@ E		::=		integer_num				{: RESULT="Integer"; :}
 			|	E:E1 mod E:E2			{: if(E1.contentEquals("Integer") && E2.contentEquals("Integer")) RESULT="Integer"; else RESULT="Error"; :}
 			|	E:E1 OPEN E:E2 CLOSE	{: if(E2.contentEquals("Integer")) RESULT=E1; else RESULT="Error"; :}	
 			|	E:E1 PTR				{: if(E1.startsWith("Pointer")) RESULT=E1; else RESULT="Error"; :}
-			|	id:name					{: try{RESULT=symTable.get_id(name,true).type;}catch(Exception ex){RESULT="Error";}:}
+			|	id:name					{: try{RESULT=symTable.get_id(name,true,false).type;}catch(Exception ex){RESULT="Error";}:}
 			|	E oparit E
 			;

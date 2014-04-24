@@ -1,8 +1,5 @@
-i: integer;
-r: real;
-a: array[5] of real;
-p: ^integer;
-i: integer;
-
-i:=5;
-if a[0] < a[1] then a[0]:=10
+{ x: integer; x := 10;}
+{ x:real; x := 2.8;
+{ y: integer;
+y:=12.0}
+}

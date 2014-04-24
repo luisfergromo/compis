@@ -76,13 +76,16 @@ WHITE     = {EOF} | [ \t\f]
 	"]"		{ System.out.print("] ");		return symbol(sym.CLOSE);}
 	"^"		{ System.out.print("^ ");		return symbol(sym.PTR);}
 	
+	"{"		{ symTable.push_block(); 	System.out.print("pushing-block ");}
+	"}"		{ symTable.pop_block();		System.out.print("closing-block ");}
+	
 	/*****/
 	
-	{NUMS}"."{NUMS}					{ System.out.print("real_num "); 		return symbol(sym.real_num);}
-	{NUMS}							{ System.out.print("int_num ");			return symbol(sym.integer_num);}
-	{CHARS}({CHARS}|{NUMS}|"_")*	{ System.out.print("id ");				return symbol(sym.id, yytext());}
-	{OPREL}							{ System.out.print("oprel ");			return symbol(sym.oprel);}
-	{OPARIT}						{ System.out.print("oparit ");			return symbol(sym.oparit);}
+	{NUMS}"."{NUMS}					{ System.out.print("real_num "); 					return symbol(sym.real_num);}
+	{NUMS}							{ System.out.print("int_num ");						return symbol(sym.integer_num);}
+	{CHARS}({CHARS}|{NUMS}|"_")*	{ System.out.print("id:"+yytext()+" ");				return symbol(sym.id, yytext());}
+	{OPREL}							{ System.out.print("oprel ");						return symbol(sym.oprel);}
+	{OPARIT}						{ System.out.print("oparit ");						return symbol(sym.oparit);}
 	
 	{WHITE}       	{ /* do nothing */}
 	{BR}       		{ /* do nothing */ System.out.println("");}
