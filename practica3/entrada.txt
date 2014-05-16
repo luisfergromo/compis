@@ -1,5 +1,15 @@
-{ x: integer; x := 10;}
-{ x:real; x := 2.8;
-{ y: integer;
-y:=12.0}
+x: integer;
+{{
+y: real;
+x := 10;
+y := x+x;
+if x > 10 then 
+{
+	x:=5;
+	y:=4
 }
+while x > 10 do x:=5;
+y := x mod x
+
+}}
+x:= 12

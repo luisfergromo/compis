@@ -33,7 +33,7 @@ import Interfaz.IOInterfaz;
 @SuppressWarnings("serial")
 public class Main extends IOInterfaz{
   @SuppressWarnings("resource")
-public Main() {
+  public Main() {
 		super("Cup Test", 600, 500, false,false,300);
 		
 		inText.setEditable(false);
@@ -77,7 +77,7 @@ static public void main(String argv[])
 			}
 		});
 	}catch(Exception ex){}
-  }
+}
 
 @Override
 public void sendInput(KeyEvent arg0) {}

@@ -3,22 +3,13 @@ package Practica3;
 import java.util.ArrayList;
 import java.util.Stack;
 
-class Variable{
-	public String name;
-	public String type;
-	public String h;
-	public String s;
-	
-	public Variable(String name, String type)
-	{
-		this.name=name;
-		this.type=type;
-	}
-}
+import Interfaz.IOInterfaz;
 
 class Block{
 	boolean declarations_over=false;
+	@SuppressWarnings("rawtypes")
 	ArrayList<Variable> variables;
+	@SuppressWarnings("rawtypes")
 	public Block()
 	{
 		variables = new ArrayList<Variable>();
@@ -30,17 +21,21 @@ public class symTable {
 	public static String report="";
 	public static Stack<Block> blocks= new Stack<Block>();
 	
-	static int block_status=-2;
-	public static boolean is_balanced(){return block_status==1;}
-	public static boolean declarations_over(){return blocks.get(blocks.size()-1).declarations_over;}
+	static int block_status=0;
+	public static boolean is_balanced(){return (block_status==0);}
+	public static boolean declarations_over()
+	{
+		if(blocks.isEmpty())
+			return false;
+		else
+			return blocks.get(blocks.size()-1).declarations_over;
+	}
 	public static void close_declarations(){blocks.get(blocks.size()-1).declarations_over=true;}
 	
 	public static void push_block()
 	{
-		if(block_status==-2) /*FIRST USE*/
-			block_status=1;
-		
 		report+=("\n----------block.push----------\n");
+		IOInterfaz.print("pushing-block ");
 		block_status+=1;
 		blocks.push(new Block());
 	}
@@ -48,47 +43,53 @@ public class symTable {
 	public static void pop_block()
 	{
 		report+=("\n----------block.pop----------\n");
-		if(block_status <=1 )
-			System.out.println("!can't_close_block");
+		if(block_status <1 )
+			IOInterfaz.println("!can't_close_block");
 		else
 		{
 			block_status-=1;
 			blocks.pop();
+			
+			IOInterfaz.print("closing-block ");			
 		}
 	}
 	
-	public static boolean insert_id ( String name , String type )
+	public static boolean insert_id ( Variable<?> var )
 	{
-		if(block_status==-2) /*FIRST USE*/
-			push_block();
+		if(block_status==0 && blocks.isEmpty()) /*FIRST USE*/
+			blocks.push(new Block());
 		
 		if(declarations_over())
+		{
+			IOInterfaz.println("ERROR: declaraciones cerradas"); 
 			return false;
+		}
 		
-		if(get_id(name,false,false)!=null)
-			return false;
+		for( Variable<?> v: blocks.get(blocks.size()-1).variables )
+		{
+			if ( v.name.contentEquals(var.name) )
+			{
+				IOInterfaz.println("ERROR: identificador duplicado"); 
+				return false;
+			}
+		}
 		
-		report+=("\n----------"+"id "+name +" > "+type+"----------\n");
-		blocks.get(blocks.size()-1).variables.add(new Variable(name, type));
-		
+		report+=("\n----------"+"id "+var.name +" > "+var.type+"----------\n");
+		blocks.get(blocks.size()-1).variables.add(var);
+			
 		return true;
 	}
 	
-	public static Variable get_id(String name, boolean global, boolean edit)
+	public static Variable<?> get_id(String name)
 	{
-		if(edit)
-			close_declarations();
-			
-		for ( int i=blocks.size()-1; i>=0 ; i--)
+		
+		for (int i=blocks.size()-1 ; i>=0 ; i-- )
 		{
-			for( Variable v: blocks.get(i).variables )
+			for( Variable<?> v: blocks.get(i).variables )
 			{
 				if ( v.name.contentEquals(name) )
 					return v;
 			}
-			
-			if(!global)
-				return null;
 		}
 		
 		return null;
@@ -96,7 +97,9 @@ public class symTable {
 	
 	public static String report()
 	{
-		return "\n=========================\nsymTable LOG\n"+report;
+		
+		
+		return "\n=========================\nsymTable LOG\n"+report+"\nBlocks balanced: "+is_balanced();
 	}
 	
 }

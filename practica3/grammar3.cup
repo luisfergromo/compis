@@ -37,93 +37,293 @@ parser code {:
 
 /* ------------Declaration of Terminals and Non Terminals Section----------- */
 
-terminal           		ASSIGN, SEMI, DOTS, OPEN, CLOSE, PTR, INTEGER, REAL;
-terminal           		oprel, oparit;
+terminal           		ASSIGN, SEMI, CLOSE, DOTS, OPEN, INTEGER, REAL;
+terminal           		MAJOR_THAN, MINOR_THAN, MAJOR_EQUALS, MINOR_EQUALS, EQUALS;
+terminal           		PLUS, MINUS, TIMES, DIV;
 
-terminal String   		integer_num;
-terminal String   		real_num;
-terminal String   		id;
+terminal Integer  		integer_num;
+terminal Float  		real_num;
+terminal String  		id;
 terminal String   		array, of, IF, then, WHILE, DO, mod;
 
-non terminal String     P, T, S, C, E;
-non terminal String     basic, compound;
+non terminal Variable   E;
+non terminal String     P, S, C;
+non terminal Variable   T, basic, compound;
+non terminal Variable   end, semi_or_close, close;
 
 /* -------------Precedence and Associatively of Terminals Section----------- */
       
-precedence left oprel, oparit, ASSIGN, SEMI, DOTS, PTR, mod;
+precedence left MAJOR_THAN, MINOR_THAN, MAJOR_EQUALS, MINOR_EQUALS, EQUALS, PLUS, MINUS, TIMES, DIV, ASSIGN, SEMI, CLOSE, DOTS, mod;
 
 /* ----------------------------Grammar Section-------------------- */
 
-P 		::=		S:S1 				{:
+P 		::=		S:S1 end			{:
 										if(!S1.contentEquals("Void") && symTable.is_balanced())
-											System.out.println("\n\n===== SEMANTICS ARE INVALID =====");
+											IOInterfaz.println("\n\n===== SEMANTICS ARE INVALID =====");
 										else 
-											System.out.println("\n\n===== SEMANTICS ARE VALID =====");
+											IOInterfaz.println("\n\n===== SEMANTICS ARE VALID =====");
 											
 										if(!symTable.is_balanced())
-											System.out.println("\n\n===== BLOCKS ARE UNBALANCED =====");
+											IOInterfaz.println("\n\n===== BLOCKS ARE UNBALANCED =====");
+									:}
+				|
+				
+				S:S1 				{:
+										if(!S1.contentEquals("Void") && symTable.is_balanced())
+											IOInterfaz.println("\n\n===== SEMANTICS ARE INVALID =====");
+										else 
+											IOInterfaz.println("\n\n===== SEMANTICS ARE VALID =====");
+											
+										if(!symTable.is_balanced())
+											IOInterfaz.println("\n\n===== BLOCKS ARE UNBALANCED =====");
 									:}
 			;
+
+end		::=		SEMI				{:IOInterfaz.println( "\n------end-----");:}
+			;
+
+semi_or_close	::=		SEMI
+				|		close
+				;
+
+close			::=		CLOSE close	{: symTable.pop_block(); :}
+				|		CLOSE		{: symTable.pop_block(); :}
+				;
 
 T 		::=		basic:t 			{:RESULT=t;:}
 			|	compound:t 			{:RESULT=t;:}
 			;
 
-basic 	::=		INTEGER				{: RESULT="Integer"; :}
-			|	REAL				{: RESULT="Real"; :}
+basic 	::=		INTEGER				{: IOInterfaz.print("integer "); RESULT= new Variable<Integer>(int.class, 0); :}
+			|	REAL				{: IOInterfaz.print("real "); RESULT= new Variable<Float>(float.class, new Float(0.0));  :}
 			;
 	
-compound ::=	array OPEN integer_num CLOSE of basic:type 		{: RESULT= "Array("+type+")"; 	:}
-			|	PTR basic:type									{: RESULT= "Pointer("+type+")";		:}
+compound ::=	array OPEN integer_num:n CLOSE of basic:T
+									{: 
+										if(T.type==int.class)
+										{
+											RESULT = new Variable<Integer>( int.class , new Integer[n]);
+										}
+										else if(T.type== float.class)
+										{
+											RESULT = new Variable<Float>( float.class , new Float[n]);
+										}
+										else
+											RESULT= new Variable<Exception>(Exception.class, new Exception() );
+									:}
 			;
 
-S 		::=		S:S1 SEMI S:S2								{: if(S1.contentEquals(S2)) RESULT= "Void"; else RESULT="Error";:}
+S			::=		S:S1 semi_or_close S:S2 	
+									{:
+										if(S1.contentEquals("Error") || S2.contentEquals("Error"))
+											RESULT="Error";
+										else 
+											RESULT= "Void";
+									:}
 
-			|	id:name DOTS T:type 						{: /*DECLARATIONS*/
+			|	id:name DOTS T:type {: /*DECLARATIONS*/
+										
+										type.name=name;
+									
+										if(symTable.insert_id (type))
+											RESULT="Void";
+										else
+											RESULT="Error";
+									:}
+															
+															
+			|	id:name OPEN integer_num:index CLOSE ASSIGN E:E1	
 			
-																if(symTable.insert_id (name,type.toString()))
-																RESULT="Void";
-																else
-																{
-																	System.out.println("ERROR: identificador duplicado"); 
-																	RESULT="Error";
-																}
-															:}
+									{:
+										RESULT= "Error";
+										Variable tmp = symTable.get_id(name);
+										symTable.close_declarations();
+										
+										if(tmp!=null && tmp.isArray())
+										{
+											if(E1.type==tmp.type || tmp.type== float.class)
+											{
+												if(tmp.size < index)
+												{
+													tmp.array[index]= E1.value;
+													RESULT="Void";
+												}
+												else
+													IOInterfaz.println("index out of range at "+name);
+											}
+										}
+									:}
 															
+			|	id:name ASSIGN E:E1	{: 	
+										RESULT= "Error";
+										Variable tmp = symTable.get_id(name);
+										symTable.close_declarations();
+																				
+										if(tmp!=null && !tmp.isArray())
+										{
+											if(E1.type==tmp.type || tmp.type== float.class)
+											{
+												tmp.value= E1.value;
+												RESULT="Void";
+											}
+										}
+										
+									:}
 															
-			|	id:name OPEN integer_num CLOSE ASSIGN E:E1	{:  
-																/*ASSIGNATIONS*/
-																
-																if(symTable.get_id(name,true,false)==null) RESULT= "Error";
-																else {
-																	String tmp = symTable.get_id(name,true,true).type;
-																	if(tmp.endsWith(E1+")")) RESULT= "Void";
-																	else if(tmp.contentEquals("Array(Real)") && E1.contentEquals("Integer")) RESULT= "Void";
-																	else RESULT="Error";
-																}
-															:}
-															
-			|	id:name ASSIGN E:E1							{: if(symTable.get_id(name,true,false)==null) RESULT= "Error";
-																else {
-																	String tmp = symTable.get_id(name,true,true).type;
-																	if(tmp.contentEquals(E1)) RESULT= "Void";
-																	else if(tmp.contentEquals("Real") && E1.contentEquals("Integer")) RESULT= "Void";
-																	else RESULT="Error";
-																}
-															:}
-															
-			|	IF C:C1 then S:S1							{: if (C1.contentEquals("Boolean") && !S1.contentEquals("Error")) RESULT= "Void"; else RESULT="Error"; :}
-			|	WHILE C:C1 DO S:S1							{: if (C1.contentEquals("Boolean") && !S1.contentEquals("Error")) RESULT= "Void"; else RESULT="Error"; :}
+			|	IF C:C1 then S:S1	{:
+										if (C1.contentEquals("Boolean") && !S1.contentEquals("Error")) 
+											RESULT= "Void";
+										else 
+											RESULT="Error";
+									:}
+			|	WHILE C:C1 DO S:S1	{:
+										if (C1.contentEquals("Boolean") && !S1.contentEquals("Error"))
+											RESULT= "Void"; 
+										else
+											RESULT="Error";
+									:}
 			;
 
-C		::=		E:E1 oprel E:E2			{: if(E1.contentEquals(E2)) RESULT="Boolean"; else RESULT="Error"; :}
+C		::=	E:E1 MAJOR_THAN E:E2		{:
+											if( E1.type==E2.type && E1.isArray()==E2.isArray()) 
+												RESULT= "Boolean";
+											else 
+												RESULT="Error";
+										:}
+			|
+			
+			E:E1 MINOR_THAN E:E2		{: 
+											if( E1.type==E2.type && E1.isArray()==E2.isArray()) 
+												RESULT= "Boolean";
+											else 
+												RESULT="Error";
+										:}
+			|
+			
+			E:E1 MAJOR_EQUALS E:E2		{: 
+											if( E1.type==E2.type && E1.isArray()==E2.isArray()) 
+												RESULT= "Boolean";
+											else 
+												RESULT="Error";
+										:}
+			|
+			
+			E:E1 MINOR_EQUALS E:E2		{: 
+											if( E1.type==E2.type && E1.isArray()==E2.isArray()) 
+												RESULT= "Boolean";
+											else 
+												RESULT="Error";
+										:}
+
+			|
+			
+			E:E1 EQUALS E:E2			{: 
+											if( E1.type==E2.type && E1.isArray()==E2.isArray()) 
+												RESULT= "Boolean";
+											else 
+												RESULT="Error";
+										:}
+
 			;
 
-E		::=		integer_num				{: RESULT="Integer"; :}
-			|	real_num				{: RESULT="Real"; :}
-			|	E:E1 mod E:E2			{: if(E1.contentEquals("Integer") && E2.contentEquals("Integer")) RESULT="Integer"; else RESULT="Error"; :}
-			|	E:E1 OPEN E:E2 CLOSE	{: if(E2.contentEquals("Integer")) RESULT=E1; else RESULT="Error"; :}	
-			|	E:E1 PTR				{: if(E1.startsWith("Pointer")) RESULT=E1; else RESULT="Error"; :}
-			|	id:name					{: try{RESULT=symTable.get_id(name,true,false).type;}catch(Exception ex){RESULT="Error";}:}
-			|	E oparit E
+E		::=
+			integer_num:n				{: 
+											RESULT= new Variable<Integer>(int.class, n);
+										:}
+			
+			|	
+			
+			real_num:n					{: 
+											RESULT= new Variable<Float>(float.class, n);
+										:}
+			|
+			
+			E:E1 mod E:E2			
+										{: 
+											if(E1.type==int.class && E2.type==int.class) 
+												RESULT= new Variable<Integer>(int.class, (int) (((int) E1.value) % ((int)E2.value)));
+											else if(E1.type==float.class && E2.type==int.class) 
+												RESULT= new Variable<Integer>(int.class, (int) (((float) E1.value) % ((int)E2.value))); 
+											else 
+												RESULT= new Variable<Exception>(Exception.class, new Exception() );
+											IOInterfaz.println( E1.value +"%"+ E2.value +"= "+RESULT.value);
+										:}
+			
+			|
+			
+			E:E1 OPEN E:E2 CLOSE
+										{: 
+											if(E2.type==int.class && E1.isArray())
+												RESULT= new Variable(E1.type, E1.array[(int)E2.value] );
+											else
+												RESULT= new Variable<Exception>(Exception.class, new Exception() );
+										:}
+											
+			|
+			
+			id:name						{: 
+											try{
+												RESULT=symTable.get_id(name);
+											}catch(Exception ex){
+												RESULT= new Variable<Exception>(Exception.class, new Exception() );
+											}
+										:}
+			
+			|
+			
+			E:E1 PLUS E:E2			{:
+										IOInterfaz.print( E1.value +"+"+ E2.value);
+										
+											if(E1.type==Exception.class || E2.type==Exception.class)
+												RESULT= new Variable<Exception>(Exception.class, new Exception() );
+											if(E1.type==float.class && E2.type==float.class)
+												RESULT=new Variable( float.class, Float.parseFloat(""+E1.value) + Float.parseFloat(""+E2.value) ); 
+											else
+												RESULT=new Variable( int.class, (int) (((int) E1.value) + ((int)E2.value)));
+											
+										IOInterfaz.println( "= "+RESULT.value);
+									:}
+			|
+			
+			E:E1 MINUS E:E2			{:
+										IOInterfaz.print( E1.value +"-"+ E2.value);
+										
+											if(E1.type==Exception.class || E2.type==Exception.class)
+												RESULT= new Variable<Exception>(Exception.class, new Exception() );
+											if(E1.type==float.class || E2.type==float.class)
+												RESULT=new Variable( float.class, Float.parseFloat(""+E1.value) - Float.parseFloat(""+E2.value) );
+											else
+												RESULT=new Variable( int.class, (int) (((int) E1.value) - ((int)E2.value)));
+											
+										IOInterfaz.println( "= "+RESULT.value);
+									:}
+			|
+			
+			E:E1 TIMES E:E2			{:
+										IOInterfaz.print( E1.value +"*"+ E2.value);
+										
+											if(E1.type==Exception.class || E2.type==Exception.class)
+												RESULT= new Variable<Exception>(Exception.class, new Exception() );
+											if(E1.type==float.class || E2.type==float.class)
+												RESULT=new Variable( float.class, Float.parseFloat(""+E1.value) * Float.parseFloat(""+E2.value) );
+											else
+												RESULT=new Variable( int.class, (int) (((int) E1.value) * ((int)E2.value)));
+											
+										IOInterfaz.println( "= "+RESULT.value);
+									:}
+			|
+			
+			E:E1 DIV E:E2			{:
+										IOInterfaz.print( E1.value +"/"+ E2.value);
+										
+											if(E1.type==Exception.class || E2.type==Exception.class)
+												RESULT= new Variable<Exception>(Exception.class, new Exception() );
+											if(E1.type==float.class || E2.type==float.class)
+												RESULT=new Variable( float.class, Float.parseFloat(""+E1.value) / Float.parseFloat(""+E2.value) );
+											else
+												RESULT=new Variable( int.class, (int) (((int) E1.value) / ((int)E2.value)));
+											
+										IOInterfaz.println( "= "+RESULT.value);
+									:}
+
 			;
